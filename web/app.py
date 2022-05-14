@@ -70,19 +70,20 @@ class Register(Resource):
             "Username": username
         })[0]["Debt"]
         return debt
-    
+
     def generateReturnDictionary(status, msg):
         retJson = {
             "status": status,
             "msg": msg
         }
         return retJson
-    
+
     #ErrorDictonary, true/false
     def verifyCredentials(username, password):
         if not UserExist(username):
             return generateReturnDictionary(301, "Invalid Username"), True
         correct_pw = verifyPw(username, password)
-        
+
         if not correct_pw:
-            return
+            return generateReturnDictionary(302, "Incorrect Password"), True
+        return None, False
