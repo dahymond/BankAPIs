@@ -1,4 +1,4 @@
-from flash import Flask, jsonify, request
+from flask import Flask, jsonify, request
 from flask_restful import Api, Resource
 from pymongo import MongoClient
 import bcrypt
@@ -13,7 +13,8 @@ users = db["Users"]
 
 
 def UserExist(username):
-    if users.find({Username: username}).count()==0:
+    if users.count_documents({"Username":username}) == 0:
+    #if users.find({"Username": username}).count() == 0:
         return False
     else:
         return True
@@ -33,9 +34,9 @@ class Register(Resource):
             return jsonify(retJson)
         hashed_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
 
-        users.insert({
+        users.insert_one({
             "Username": username,
-            "Passowrd": hashed_pw,
+            "Password": hashed_pw,
             "Own": 0,
             "Debt": 0
         })
@@ -89,16 +90,16 @@ def verifyCredentials(username, password):
     return None, False
 
 def updateAccount(username, balance):
-    users.update({
+    users.update_one({
         "Username": username
     },{
-        "$set"{
+        "$set":{
             "Own": balance
         }
     })
 
 def updateDebt(username, balance):
-    users.update({
+    users.update_one({
         "Username":username,
 
     }, {
@@ -107,7 +108,7 @@ def updateDebt(username, balance):
         }
     })
 
-class Add(resource):
+class Add(Resource):
     def post(self):
         postedData = request.get_json()
 
@@ -121,13 +122,17 @@ class Add(resource):
             return jsonify(retJson)
 
         if money<=0:
-            return jsonify(generateReturnDictionary(304, "The money amount entered must be >0"))
+            return jsonify(generateReturnDictionary(304, "The money amount entered must be > 0"))
         cash = cashWithUser(username)
-        money -=1
+        money -= 1 #transaction fee
 
+        #Add transaction fee to bank account
         bank_cash = cashWithUser("BANK")
         updateAccount("BANK", bank_cash+1)
+
+        #add remaining to user
         updateAccount(username, cash+money)
+
         return jsonify(generateReturnDictionary(200, "Amount added successfully to account"))
 
 class Transfer(Resource):
@@ -173,10 +178,10 @@ class Balance(Resource):
         if error:
             return jsonify(retJson)
 
-        retJson = username.find({
+        retJson = users.find({
             "Username": username
         },{
-            "password": 0,
+            "Password": 0,
             "_id": 0
         })[0]
 
@@ -188,7 +193,7 @@ class PayLoan(Resource):
 
         username = postedData["username"]
         password = postedData["password"]
-        loan_amount   = postedData["loan_amount"]
+        money   = postedData["amount"]
 
         retJson, error = verifyCredentials(username, password)
 
@@ -199,15 +204,15 @@ class PayLoan(Resource):
 
 
 
-        if cash < loan_amount:
+        if cash < money:
             return jsonify(generateReturnDictionary(303, "Please add more money to your balance"))
 
         debt = debtWithUser(username)
         bank_cash = cashWithUser("BANK")
 
-        updateAccount("BANK", bank_cash+loan_amount)
-        updateAccount(username, cash - loan_amount)
-        updateDebt(username, debt - loan_amount)
+        updateAccount("BANK", bank_cash+money)
+        updateAccount(username, cash - money)
+        updateDebt(username, debt - money)
 
         return jsonify(generateReturnDictionary(200, "loan repayment processed successfully"))
 
@@ -218,7 +223,7 @@ class TakeLoan(Resource):
 
         username = postedData["username"]
         password = postedData["password"]
-        loan_amount = postedData["loan_amount"]
+        money = postedData["amount"]
 
         retJson, error = verifyCredentials(username, password)
 
@@ -228,8 +233,8 @@ class TakeLoan(Resource):
         cash = cashWithUser(username)
         debt = debtWithUser(username)
 
-        updateAccount(username, cash+loan_amount)
-        updateDebt(username, debt + loan_amount)
+        updateAccount(username, cash+money)
+        updateDebt(username, debt + money)
 
         return jsonify(generateReturnDictionary(200, "Loan processed successfully"))
 
