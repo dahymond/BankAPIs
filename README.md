@@ -1,11 +1,11 @@
 # API endpoints 
-/register  \n
-/balance \n
-/transfer \n
-/takeloan \n
-/payloan \n
+/register  <br>
+/balance <br>
+/transfer <br>
+/takeloan <br>
+/payloan <br>
 
 # Tech stack
-flask/python 3.10 \n
-mongodb \n
-docker \n
+flask/python 3.10 <br>
+mongodb <br>
+docker <br>
